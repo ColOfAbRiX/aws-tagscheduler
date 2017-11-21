@@ -12,7 +12,7 @@ resource "aws_lambda_function" "ec2_scheduler" {
   handler             = "ec2-scheduler.lambda_handler"
   runtime             = "python2.7"
   memory_size         = "128"
-  timeout             = "300"
+  timeout             = "150"
   filename            = "${path.module}/ec2-scheduler.zip"
 }
 
@@ -81,9 +81,7 @@ data "aws_iam_policy_document" "ec2_scheduler_permissions" {
       "ec2:StopInstances",
       "ec2:DescribeRegions",
       "ec2:DescribeInstances",
-      "kms:CreateGrant",
-      "cloudwatch:PutMetricData",
-      "cloudformation:DescribeStacks"
+      "kms:CreateGrant"
     ]
     resources         = ["*"]
   }
