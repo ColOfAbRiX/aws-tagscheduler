@@ -1,19 +1,29 @@
 ##  Lambda Function  ##
 
+locals {
+  code_zip_file = "${path.module}/tag-scheduler.zip"
+}
+
 resource "aws_lambda_function" "tag_scheduler" {
   tags {
     Name              = "TagScheduler"
     Terraform         = "True"
-    Scheduler         = "True"
+    TagScheduler      = "True"
   }
   function_name       = "TagScheduler"
-  description         = "Lambda function for automatically starting and stopping EC2 instances."
+  description         = "Scheduler to start and stop resources based on tags."
   role                = "${aws_iam_role.tag_scheduler.arn}"
-  handler             = "tag-scheduling.lambda_handler"
+  handler             = "tagscheduler.lambda_handler"
   runtime             = "python2.7"
   memory_size         = "128"
   timeout             = "240"
-  filename            = "${path.module}/tag-scheduler.zip"
+  filename            = "${local.code_zip_file}"
+  source_code_hash    = "${base64sha256(file(local.code_zip_file))}"
+  environment {
+    variables {
+      RUN_ON_REGIONS  = "${join(",", var.run_on_regions)}"
+    }
+  }
 }
 
 ##  Scheduled event  ##
@@ -22,6 +32,7 @@ resource "aws_cloudwatch_event_rule" "tag_scheduler" {
   name                = "TagScheduler"
   description         = "Rule to trigger TagScheduler function on a schedule"
   schedule_expression = "rate(5 minutes)"
+  depends_on          = ["aws_lambda_function.tag_scheduler"]
 }
 
 resource "aws_cloudwatch_event_target" "tag_scheduler" {
@@ -82,8 +93,7 @@ data "aws_iam_policy_document" "tag_scheduler_permissions" {
       "rds:StartDBInstances",
       "rds:StopDBInstances",
       "rds:DescribeDBInstances",
-      # Who knows
-      "kms:CreateGrant"
+      "rds:ListTagsForResource"
     ]
     resources         = ["*"]
   }
