@@ -151,6 +151,7 @@ def execute_actions(instance_actions):
     Executes the start/stop actions on the required instances
     """
     print("  Execute scheduling actions:")
+    executed = 0
     for i_id, info in instance_actions.iteritems():
         instance, action = (info['instance_ref'], info['action'])
 
@@ -160,10 +161,15 @@ def execute_actions(instance_actions):
         elif action == "start":
             print("    START instance %s" % i_id)
             instance.start()
+            executed += 1
 
         elif action == "stop":
             print("    STOP instance %s" % i_id)
             instance.stop()
+            executed += 1
+
+    if executed == 0:
+        print("    No instances to start or stop.")
 
 
 if __name__ == '__main__':

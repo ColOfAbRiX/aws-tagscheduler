@@ -1,16 +1,17 @@
 ##  Lambda Function  ##
 
 locals {
-  code_zip_file = "${path.module}/tag-scheduler.zip"
+  code_zip_file       = "${path.module}/tag-scheduler.zip"
+  scheduler_name      = "TagScheduler"
 }
 
 resource "aws_lambda_function" "tag_scheduler" {
   tags {
-    Name              = "TagScheduler"
+    Name              = "${local.scheduler_name}"
     Terraform         = "True"
     TagScheduler      = "True"
   }
-  function_name       = "TagScheduler"
+  function_name       = "${local.scheduler_name}"
   description         = "Scheduler to start and stop resources based on tags."
   role                = "${aws_iam_role.tag_scheduler.arn}"
   handler             = "tagscheduler.lambda_handler"
@@ -29,15 +30,15 @@ resource "aws_lambda_function" "tag_scheduler" {
 ##  Scheduled event  ##
 
 resource "aws_cloudwatch_event_rule" "tag_scheduler" {
-  name                = "TagScheduler"
-  description         = "Rule to trigger TagScheduler function on a schedule"
+  name                = "${local.scheduler_name}"
+  description         = "Rule to trigger ${local.scheduler_name} function on a schedule"
   schedule_expression = "rate(5 minutes)"
   depends_on          = ["aws_lambda_function.tag_scheduler"]
 }
 
 resource "aws_cloudwatch_event_target" "tag_scheduler" {
   rule                = "${aws_cloudwatch_event_rule.tag_scheduler.name}"
-  target_id           = "TagScheduler"
+  target_id           = "${local.scheduler_name}"
   arn                 = "${aws_lambda_function.tag_scheduler.arn}"
 }
 
@@ -54,7 +55,7 @@ resource "aws_lambda_permission" "tag_scheduler" {
 ##  Role  ##
 
 resource "aws_iam_role" "tag_scheduler" {
-  name                = "TagSchedulerRole"
+  name                = "${local.scheduler_name}Role"
   assume_role_policy  = "${data.aws_iam_policy_document.tag_scheduler_assume_role.json}"
 }
 
@@ -90,8 +91,8 @@ data "aws_iam_policy_document" "tag_scheduler_permissions" {
       "ec2:StopInstances",
       "ec2:DescribeInstances",
       # To work with RDS
-      "rds:StartDBInstances",
-      "rds:StopDBInstances",
+      "rds:StartDBInstance",
+      "rds:StopDBInstance",
       "rds:DescribeDBInstances",
       "rds:ListTagsForResource"
     ]
