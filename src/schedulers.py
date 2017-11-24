@@ -172,11 +172,13 @@ class StartStopScheduler(Scheduler):
         if start_time is None:
             if now_time >= stop_time:
                 return "stop"
+            return None
 
         # No stop time
         if stop_time is None:
             if now_time < start_time:
                 return "start"
+            return None
 
         # Start and stop time defined
         if start_time < stop_time:
