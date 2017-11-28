@@ -46,8 +46,8 @@ class Scheduler(object):
 
     @staticmethod
     def build(sched_type, instance):
-        if sched_type.lower() == StartStopScheduler.type():
-            return StartStopScheduler(instance)
+        if sched_type.lower() == DailyScheduler.type():
+            return DailyScheduler(instance)
         elif sched_type.lower() == TimerScheduler.type():
             return TimerScheduler(instance)
         elif sched_type.lower() == IgnoreScheduler.type():
@@ -168,9 +168,9 @@ class TimerScheduler(Scheduler):
         return None
 
 
-class StartStopScheduler(Scheduler):
+class DailyScheduler(Scheduler):
     """
-    Find the appropriate action for the scheduler type "startstop"
+    Find the appropriate action for the scheduler type "daily"
 
     The format of the tag is: "<start_time>/<stop_time>[/<week_days>[/<timezone>]]"
      - "start_time" is the time at which the instance must start, in the format
@@ -188,7 +188,7 @@ class StartStopScheduler(Scheduler):
     """
     @staticmethod
     def type():
-        return "startstop"
+        return "daily"
 
     @staticmethod
     def action(now_time, start_time, stop_time):
@@ -269,7 +269,7 @@ class StartStopScheduler(Scheduler):
         if not is_active_day:
             return None
 
-        return StartStopScheduler.action(now_time, start_time, stop_time)
+        return DailyScheduler.action(now_time, start_time, stop_time)
 
 
 class IgnoreScheduler(Scheduler):

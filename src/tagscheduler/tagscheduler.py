@@ -101,10 +101,16 @@ def process_instance(instance):
 
         # Look for the type of scheduler
         scheduler_type = t_key[len("scheduler-"):]
-        print("      Scheduler type is: %s" % scheduler_type)
 
         # Check what the scheduler would do
-        tag_action = Scheduler.build(scheduler_type, instance).check(t_value)
+        scheduler = Scheduler.build(scheduler_type, instance)
+        if scheduler is None:
+            print("      Scheduler type is: unknown.")
+            continue
+
+        print("      Scheduler type is: %s" % scheduler_type)
+
+        tag_action = scheduler.check(t_value)
         if tag_action is None:
             print("      Tag action is: unknown.")
             continue
