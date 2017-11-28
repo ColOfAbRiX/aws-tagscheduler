@@ -44,12 +44,12 @@ class Schedulable(object):
 
     @abstractmethod
     def start_time(self):
-        """ The time the resource has been started """
+        """ The UTC time the resource has been started """
         raise NotImplementedError()
 
     @abstractmethod
     def stop_time(self):
-        """ The time the resource has been stopped """
+        """ The UTC time the resource has been stopped """
         raise NotImplementedError()
 
     @abstractmethod
@@ -87,14 +87,14 @@ class EC2Schedulable(Schedulable):
 
     def start_time(self):
         if self.status() == "running":
-            return self._ec2_instance.launch_time.replace(tzinfo=None)
+            return self._ec2_instance.launch_time.to('UTC')
         return None
 
     def stop_time(self):
         if self.status() == "stopped":
             reason = self._ec2_instance.state_transition_reason
             stopped_time = re.findall('.*\((.*)\)', reason)[0]
-            return datetime.strptime(stopped_time, '%Y-%m-%d %H:%M:%S %Z')
+            return datetime.strptime(stopped_time, '%Y-%m-%d %H:%M:%S %Z').to('UTC')
         return None
 
     def status(self):
