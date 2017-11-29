@@ -40,19 +40,19 @@ class Scheduler(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, instance):
+    def __init__(self, instance, name, value):
+        if instance is None:
+            raise ValueError
+
         self._instance = instance
+        self.name = name.strip() if name is not None else ""
+        self.value = value.strip() if value is not None else ""
         self._mock_now_time = None
 
-    @staticmethod
-    def build(sched_type, instance):
-        if sched_type.lower() == DailyScheduler.type():
-            return DailyScheduler(instance)
-        elif sched_type.lower() == TimerScheduler.type():
-            return TimerScheduler(instance)
-        elif sched_type.lower() == IgnoreScheduler.type():
-            return IgnoreScheduler(instance)
-        return None
+    @abstractmethod
+    def __str__(self):
+        """ A text representation of the scheduler """
+        raise NotImplementedError()
 
     @abstractmethod
     def type():
@@ -60,7 +60,7 @@ class Scheduler(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def check(self, tag_value):
+    def check(self):
         """ Checks what a scheduler would do on the instance given the tag """
         raise NotImplementedError()
 
@@ -68,7 +68,26 @@ class Scheduler(object):
         """ Current or mock time in UTC """
         if self._mock_now_time is not None:
             return self._mock_now_time
-        return datetime.now().utcnow()
+        return datetime.utcnow().replace(tzinfo=tz.utc)
+
+    @staticmethod
+    def build(instance, sched_type, name, value):
+        if sched_type is None:
+            return None
+
+        if sched_type.lower() == DailyScheduler.type():
+            return DailyScheduler(instance, name, value)
+
+        elif sched_type.lower() == TimerScheduler.type():
+            return TimerScheduler(instance, name, value)
+
+        elif sched_type.lower() == IgnoreScheduler.type():
+            return IgnoreScheduler(instance, name, value)
+
+        elif sched_type.lower() == FixedScheduler.type():
+            return FixedScheduler(instance, name, value)
+
+        return None
 
     @staticmethod
     def parse_timezone(timezone):
@@ -95,8 +114,7 @@ class Scheduler(object):
         # Timezone
         timezone = Scheduler.parse_timezone(timezone)
         if timezone is not None:
-            time = timezone.localize(time, is_dst=None)
-            time = time.astimezone(tz.utc)
+            time = timezone.localize(time, is_dst=None).astimezone(tz.utc)
 
         # Only return time
         return time.time()
@@ -129,27 +147,48 @@ class TimerScheduler(Scheduler):
         after time_span minutes have passed
      - "time_span" is a time duration in minutes, like 60 to indicate an hour
     """
+    def __init__(self, instance, name, value):
+        super(self.__class__, self).__init__(instance, name, value)
+        self._error = False
+
+        # Check for bad values
+        if self.value is None or self.value == "":
+            print("None or empty value", file=sys.stderr)
+            self._error = True
+            return
+
+        fields = self.value.split("/")
+
+        # Check fields
+        if len(fields) != 2:
+            print("Wrong number of fields", file=sys.stderr)
+            self._error = True
+            return
+
+        # Interpreting tag
+        try:
+            self.action = fields[0].lower()
+            minutes = int(fields[1] if fields[1] != "" else "0")
+            self.timer = timedelta(minutes=minutes)
+        except Exception as e:
+            print("Exception: %s" % e.message, file=sys.stderr)
+            self._error = True
+            return
+
+    def __str__(self):
+        if self._error:
+            return "TimerScheduler: ERROR"
+
+        return "TimerScheduler, Name: \"%s\", Action: %s, Timer: %s" % (
+            self.name, self.action, self.timer
+        )
+
     @staticmethod
     def type():
         return "timer"
 
-    def check(self, tag_value):
-        # Protection in case of None value
-        if tag_value is None or tag_value.strip() == "":
-            return "error"
-
-        now_time = self.now_utc().time()
-        tag_split = tag_value.split("/")
-
-        # Check fields
-        if len(tag_split) != 2:
-            return "error"
-
-        # Interpreting tag
-        try:
-            action = tag_split[0].lower()
-            max_duration = timedelta(minutes=int(tag_split[1]))
-        except Exception as e:
+    def check(self):
+        if self._error:
             return "error"
 
         # Instance up/down time
@@ -165,8 +204,8 @@ class TimerScheduler(Scheduler):
             return None
 
         # If the instance must be started or stopped
-        if (now_time - instance_time) > max_duration:
-            return action
+        if (self.now_utc() - instance_time) > self.timer:
+            return self.action
 
         return None
 
@@ -189,99 +228,146 @@ class DailyScheduler(Scheduler):
      - "timezone" is the time zone in 3 letter format, like EST or GMT. If not
        specified, the default is UTC
     """
+    def __init__(self, instance, name, value):
+        super(self.__class__, self).__init__(instance, name, value)
+        self._error = False
+
+        # Check for bad values
+        if self.value is None or self.value == "":
+            print("None or empty value", file=sys.stderr)
+            self._error = True
+            return
+
+        # Extract the parameters
+        fields = self.value.split("/")
+
+        # Check fields
+        if len(fields) < 3 or len(fields) > 4:
+            print("Wrong number of fields", file=sys.stderr)
+            self._error = True
+            return
+
+        try:
+            # Time zone
+            self.time_zone = fields[3] if len(fields) > 3 and fields[3] != "" else "UTC"
+
+            # Time the instance has to start
+            self.start_time = Scheduler.parse_time(fields[0], self.time_zone)
+
+            # Time the instance has to stop
+            self.stop_time = Scheduler.parse_time(fields[1], self.time_zone)
+
+            # Parsing day
+            days_active = fields[2] if len(fields) > 2 else "all"
+            self.days_active = Scheduler.parse_day(days_active)
+
+        except Exception as e:
+            print("-" * 80, file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            print("-" * 80, file=sys.stderr)
+            self._error = True
+            return
+
+    def __str__(self):
+        if self._error:
+            return "DailyScheduler: ERROR"
+
+        return "DailyScheduler, Name: \"%s\", Start: %sUTC, Stop: %sUTC, Days: %s" % (
+            self.name,
+            self.start_time,
+            self.stop_time,
+            ','.join(self.days_active)
+        )
+
     @staticmethod
     def type():
         return "daily"
 
-    @staticmethod
-    def action(now_time, start_time, stop_time):
+    def check(self):
+        # Protection in case of None value
+        if self._error:
+            return "error"
+
+        # Check day of the week
+        now_weekday = datetime.today().strftime("%a").lower()
+        if now_weekday not in self.days_active:
+            return None
+
+        now_time = self.now_utc().time()
+
         # No time range specified (weird...)
-        if start_time is None and stop_time is None:
+        if self.start_time is None and self.stop_time is None:
             return None
 
         # No start time
-        if start_time is None:
-            if now_time >= stop_time:
+        if self.start_time is None:
+            if now_time >= self.stop_time:
                 return "stop"
             return None
 
         # No stop time
-        if stop_time is None:
-            if now_time < start_time:
+        if self.stop_time is None:
+            if now_time < self.start_time:
                 return "start"
             return None
 
-        # Start and stop time defined
-        if start_time < stop_time:
-            if now_time >= start_time and now_time < stop_time:
-                return "start"
-            elif now_time >= stop_time:
-                return "stop"
-        else:
-            if now_time >= stop_time and now_time < start_time:
-                return "stop"
-            elif now_time >= start_time:
-                return "start"
+        # When the start is after the stop
+        if self.start_time > self.stop_time:
+            self.start_time, self.stop_time = self.stop_time, self.start_time
+
+        if now_time >= self.start_time and now_time < self.stop_time:
+            return "start"
+        elif now_time >= self.stop_time:
+            return "stop"
 
         # Something else
         return None
-
-    def check(self, tag_value):
-        # Protection in case of None value
-        if tag_value is None:
-            return "error"
-
-        # Some useful info
-        now_time = self.now_utc().time()
-        now_weekday = datetime.today().strftime("%a").lower()
-
-        # Extract the parameters
-        tag_split = tag_value.split("/")
-
-        # Check fields
-        if len(tag_split) < 3:
-            return "error"
-
-        try:
-            # Time zone
-            time_zone = tag_split[3] if len(tag_split) > 3 else "UTC"
-
-            # Time the instance has to start
-            start_time = Scheduler.parse_time(tag_split[0], time_zone)
-
-            # Time the instance has to stop
-            stop_time = Scheduler.parse_time(tag_split[1], time_zone)
-
-            # Parsing day
-            days_active = tag_split[2] if len(tag_split) else "all"
-            days_active = Scheduler.parse_day(days_active)
-
-        except Exception as e:
-            print("-" * 80)
-            traceback.print_exc()
-            print("-" * 80)
-            return "error"
-
-        # Check day of the week
-        is_active_day = False
-        for d in days_active:
-            if d.lower() == now_weekday:
-                is_active_day = True
-        if not is_active_day:
-            return None
-
-        return DailyScheduler.action(now_time, start_time, stop_time)
 
 
 class IgnoreScheduler(Scheduler):
     """
     This scheduler always returns "ignore"
     """
+    def __init__(self, instance, name, value):
+        super(self.__class__, self).__init__(instance, name, value)
+
+    def __str__(self):
+        return "IgnoreScheduler: ignore all scheduler tags"
+
     @staticmethod
     def type():
         return "ignore_all"
 
-    def check(self, tag_value):
+    def check(self):
         return "ignore"
+
+
+class FixedScheduler(Scheduler):
+    """
+    This scheduler keeps an instance always started or stopped
+    """
+    def __init__(self, instance, name, value):
+        super(self.__class__, self).__init__(instance, name, value)
+
+        self._error = False
+        if self.value not in ['start', 'stop']:
+            self._error = True
+
+    def __str__(self):
+        if self._error:
+            return "FixedScheduler: ERROR"
+        if self.value == 'start':
+            return "FixedScheduler: keep the instance started"
+        elif self.value == 'stop':
+            return "FixedScheduler: keep the instance stopped"
+
+    @staticmethod
+    def type():
+        return "fixed"
+
+    def check(self):
+        if self._error:
+            return "error"
+        return self.value
 
 # vim: ft=python:ts=4:sw=4

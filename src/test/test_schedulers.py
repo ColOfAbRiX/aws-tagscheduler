@@ -27,102 +27,239 @@ from __future__ import print_function
 
 import os
 import sys
+sys.path.append(os.path.join(os.getcwd(), "tagscheduler"))
+sys.stderr = open('/dev/null', 'w')
 import unittest
 
-sys.path.append(os.path.join(os.getcwd(), "tagscheduler"))
 from tagscheduler.schedulers import *
+from tagscheduler.schedulable import *
 
-class StartStopSchedulerTest(unittest.TestCase):
+
+class MockInstance(Schedulable):
+    def id(self):
+        return "abc"
+
+    def start_time(self):
+        return None
+
+    def stop_time(self):
+        return None
+
+    def status(self):
+        return ""
+
+    def tags(self):
+        return []
+
+    def start(self):
+        return True
+
+    def stop(self):
+        return True
+
+
+class DailySchedulerTest(unittest.TestCase):
     """
-    Tests for StartStopScheduler
+    Tests for DailyScheduler
     """
 
     def setUp(self):
-        self.scheduler = Scheduler.build(StartStopScheduler.type(), None)
+        self.mock = MockInstance()
+        self.type = DailyScheduler.type()
+        self.all_days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-    def test_build(self):
-        self.assertEqual(isinstance(self.scheduler, StartStopScheduler), True)
+    def test_type(self):
+        self.assertEqual(DailyScheduler.type(), "daily")
 
-    def test_wrongTag(self):
+    def test_string(self):
+        # With empty values
+        result = str(Scheduler.build(self.mock, self.type, "", "//"))
+        self.assertIsNotNone(result)
+        self.assertNotEqual(result, "")
+
+    def test_build_bad_value(self):
         # None value
-        self.assertEqual(self.scheduler.check(None), "error")
+        result = Scheduler.build(self.mock, self.type, "", None)
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-        # Empty string
-        self.assertEqual(self.scheduler.check(""), "error")
+        # Empty string value
+        result = Scheduler.build(self.mock, self.type, "", "")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-    def test_emptyTag(self):
-        # Empty fields
-        self.assertEqual(self.scheduler.check("//"), None)
-        self.assertEqual(self.scheduler.check("///"), None)
+        # Random string value
+        result = Scheduler.build(self.mock, self.type, "", "asdfghj")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-#     def test_startTime(self):
-#         pass
+    def test_build_empty_fields(self):
+        # Empty 3-fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "//")
+        self.assertIsNotNone(result)
+        self.assertIsNone(result.start_time)
+        self.assertIsNone(result.stop_time)
+        self.assertEqual(result.time_zone, "UTC")
+        self.assertEqual(result.days_active, self.all_days)
 
-#     def test_stopTime(self):
-#         pass
+        # Empty 4-fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "///")
+        self.assertIsNotNone(result)
+        self.assertIsNone(result.start_time)
+        self.assertIsNone(result.stop_time)
+        self.assertEqual(result.time_zone, "UTC")
+        self.assertEqual(result.days_active, self.all_days)
 
-#     def test_startStopTime(self):
-#         pass
+    def test_build_bad_fields(self):
+        # Not enough fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "/")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-#     def test_daysShortcut(self):
-#         pass
+        # Too many fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "////")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-#     def test_startDay(self):
-#         pass
+    def test_build_empty_name(self):
+        # None name
+        result = Scheduler.build(self.mock, self.type, None, "//")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "")
 
-#     def test_timezone(self):
-#         pass
+        # Empty name
+        result = Scheduler.build(self.mock, self.type, "", "//")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "")
+
+    def test_build_empty_instance(self):
+        # None value
+        with self.assertRaises(ValueError):
+            Scheduler.build(None, DailyScheduler.type(), "", "//")
 
 
 class TimerSchedulerTest(unittest.TestCase):
     """
     Tests for TimerScheduler
     """
-
     def setUp(self):
-        self.scheduler = Scheduler.build(TimerScheduler.type(), None)
+        self.mock = MockInstance()
+        self.type = TimerScheduler.type()
 
-    def test_build(self):
-        self.assertEqual(isinstance(self.scheduler, TimerScheduler), True)
+    def test_type(self):
+        self.assertEqual(TimerScheduler.type(), "timer")
 
-    def test_wrongTag(self):
+    def test_build_bad_value(self):
         # None value
-        self.assertEqual(self.scheduler.check(None), "error")
+        result = Scheduler.build(self.mock, self.type, "", None)
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-        # Empty string
-        self.assertEqual(self.scheduler.check(""), "error")
+        # Empty string value
+        result = Scheduler.build(self.mock, self.type, "", "")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-        # Empty fields
-        self.assertEqual(self.scheduler.check("/"), "error")
+        # Random string value
+        result = Scheduler.build(self.mock, self.type, "", "asdfghj")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
-#     def test_startTime(self):
-#         pass
+    def test_build_empty_fields(self):
+        # Empty 2-fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "/")
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.action)
+        self.assertIsNotNone(result.timer)
 
-#     def test_stopTime(self):
-#         pass
+    def test_build_bad_fields(self):
+        # Not enough fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
+
+        # Too many fields in the value
+        result = Scheduler.build(self.mock, self.type, "", "//")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
 
 
 class IgnoreSchedulerTest(unittest.TestCase):
     """
     Tests for IgnoreScheduler
     """
-
     def setUp(self):
-        self.scheduler = Scheduler.build(IgnoreScheduler.type(), None)
+        self.mock = MockInstance()
+        self.type = IgnoreScheduler.type()
 
-    def test_build(self):
-        self.assertEqual(isinstance(self.scheduler, IgnoreScheduler), True)
+    def test_type(self):
+        self.assertEqual(IgnoreScheduler.type(), "ignore_all")
 
-    def test_empty(self):
+    def test_build_bad_value(self):
         # None value
-        self.assertEqual(self.scheduler.check(None), "ignore")
+        result = Scheduler.build(self.mock, self.type, "", None)
+        self.assertIsNotNone(result)
 
-        # Empty string
-        self.assertEqual(self.scheduler.check(""), "ignore")
+        # Empty string value
+        result = Scheduler.build(self.mock, self.type, "", "")
+        self.assertIsNotNone(result)
 
-    def test_ignore(self):
-        # Random value
-        self.assertEqual(self.scheduler.check("wasd"), "ignore")
+        # Random string value
+        result = Scheduler.build(self.mock, self.type, "", "asdfghj")
+        self.assertIsNotNone(result)
+
+    def test_check(self):
+        result = Scheduler.build(self.mock, self.type, "", "").check()
+        self.assertEqual(result, "ignore")
+
+
+class FixedSchedulerTest(unittest.TestCase):
+    """
+    Tests for IgnoreScheduler
+    """
+    def setUp(self):
+        self.mock = MockInstance()
+        self.type = FixedScheduler.type()
+
+    def test_type(self):
+        self.assertEqual(FixedScheduler.type(), "fixed")
+
+    def test_build_bad_value(self):
+        # None value
+        result = Scheduler.build(self.mock, self.type, "", None)
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
+
+        # Empty string value
+        result = Scheduler.build(self.mock, self.type, "", "")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
+
+        # Random string value
+        result = Scheduler.build(self.mock, self.type, "", "asdfghj")
+        self.assertIsNotNone(result)
+        self.assertTrue(result._error)
+        self.assertEqual(result.check(), "error")
+
+    def test_start(self):
+        result = Scheduler.build(self.mock, self.type, "", "start").check()
+        self.assertEqual(result, "start")
+
+    def test_stop(self):
+        result = Scheduler.build(self.mock, self.type, "", "stop").check()
+        self.assertEqual(result, "stop")
 
 
 # vim: ft=python:ts=4:sw=4

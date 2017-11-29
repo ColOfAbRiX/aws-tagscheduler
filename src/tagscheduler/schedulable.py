@@ -26,9 +26,10 @@
 from __future__ import print_function
 
 import re
+import pytz as tz
 
-from abc import ABCMeta, abstractmethod
 from datetime import datetime
+from abc import ABCMeta, abstractmethod
 
 
 class Schedulable(object):
@@ -87,7 +88,7 @@ class EC2Schedulable(Schedulable):
 
     def start_time(self):
         if self.status() == "running":
-            return self._ec2_instance.launch_time.to('UTC')
+            return self._ec2_instance.launch_time
         return None
 
     def stop_time(self):

@@ -57,31 +57,29 @@ def run_tagscheduler(run_on_regions=[]):
         for region in run_on_regions:
             print("\nWorking on region \"%s\":" % region)
 
-            all_instances = get_all_instances(region)
-            instance_actions = {}
-
-            for i_type, i_list in all_instances.iteritems():
+            instance_actions = []
+            for i_type, i_list in get_all_instances(region).iteritems():
                 print("  Checking %s instances:" % i_type)
                 for instance in i_list:
                     try:
-                        instance_actions.update(
-                            process_instance(instance)
+                        instance_actions.append(
+                            (instance, process_instance(instance))
                         )
 
                     except Exception as e:
-                        print("-" * 80)
-                        print("Instance Exception")
-                        traceback.print_exc()
-                        print("-" * 80)
+                        print("-" * 80, file=sys.stderr)
+                        print("Instance Exception", file=sys.stderr)
+                        traceback.print_exc(file=sys.stderr)
+                        print("-" * 80, file=sys.stderr)
 
             # Execute the requested scheduling actions
             execute_actions(instance_actions)
 
     except Exception as e:
-        print("-" * 80)
-        print("Region Exception")
-        traceback.print_exc()
-        print("-" * 80)
+        print("-" * 80, file=sys.stderr)
+        print("Region Exception", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        print("-" * 80, file=sys.stderr)
 
 
 def process_instance(instance):
@@ -90,22 +88,14 @@ def process_instance(instance):
     """
     print("    Instance \"%s\" state is \"%s\"" % (instance.id(), instance.status()))
 
-    actions = {
-        instance.id(): {
-            'instance_ref': instance,
-            'action': None
-        }
-    }
-
     # Execute the schedulers
+    action = None
     for s in build_instance_schedulers(instance):
-        print("      - Found scheduler tag with value: \"%s\":" % s['value'])
-        print("        Scheduler type is: %s" % s['type'])
-        if s['type'] == 'unknown':
-            continue
+        print("      - Found scheduler \"%s\" with value: \"%s\":" % (s.type(), s.value))
+        print("        %s" % s)
 
         # Find what the scheduler would do on the instance
-        tag_action = s['scheduler'].check(s['value'])
+        tag_action = s.check()
         if tag_action is None:
             tag_action = "nothing"
         print("        Tag action is: %s" % tag_action)
@@ -113,36 +103,29 @@ def process_instance(instance):
 
         # Actions "start"
         if tag_action == "start" and instance.status() == "stopped":
-            actions[instance.id()].update({
-                'action': "start"
-            })
+            action = "start"
             print("start.")
 
         # Actions "stop"
         elif tag_action == "stop" and instance.status() == "running":
-            actions[instance.id()].update({
-                'action': "stop"
-            })
+            action = "stop"
             print("stop.")
 
         # Actions "ignore"
         elif tag_action == "ignore":
-            actions[instance.id()].update({
-                'action': None
-            })
+            action = None
             print("ignore all schedulers.\n      Stop processing schedulers for this instance.")
             break
 
         # Actions "error"
         elif tag_action == "error":
-            print("error.\n      ERROR from the scheduler.")
-            break
+            print("error.\n      ERROR from the scheduler, ignoring it.")
+            continue
 
         # Errors
         else:
             print("nothing required.")
-
-    return actions
+    return action
 
 
 def build_instance_schedulers(instance):
@@ -153,36 +136,31 @@ def build_instance_schedulers(instance):
 
     print("      Building and sorting list of schedulers.")
     for t_key, t_value in [(t['Key'], t['Value']) for t in instance.tags()]:
-
         # Extract the information in the Key
-        t_key_split = t_key.split("-")
-        if len(t_key_split) < 2:
+        fields = t_key.split("-")
+        if len(fields) < 2:
             continue
 
         # Check it's a scheduler
-        scheduler_tag = t_key_split[0]
+        scheduler_tag = fields[0]
         if scheduler_tag != SCHEDULER_PREFIX:
             continue
 
-        # Get the scheduler type
-        scheduler_type = t_key_split[1]
-        scheduler = Scheduler.build(scheduler_type, instance)
-        if scheduler == None:
-            scheduler_type = "unknown"
-
         # Get the scheduler name, if any
-        scheduler_name = t_key_split[2] if len(t_key_split) > 2 else ""
+        scheduler_name = fields[2] if len(fields) > 2 else ""
+
+        # Get the scheduler type
+        scheduler_type = fields[1]
+        scheduler = Scheduler.build(instance, scheduler_type, scheduler_name, t_value)
+        if scheduler is None:
+            print("      Skipping unknown scheduler: %s" % scheduler_type)
+            continue
 
         # Add the scheduler
-        schedulers.append({
-            'type': scheduler_type,
-            'name': scheduler_name,
-            'value': t_value,
-            'scheduler': scheduler
-        })
+        schedulers.append(scheduler)
 
     # Sort the schedulers by their name
-    return sorted(schedulers, key=lambda s: s['name'])
+    return sorted(schedulers, key=lambda s: s.name)
 
 
 def execute_actions(instance_actions):
@@ -191,19 +169,17 @@ def execute_actions(instance_actions):
     """
     print("  Execute scheduling actions:")
     executed = 0
-    for i_id, info in instance_actions.iteritems():
-        instance, action = (info['instance_ref'], info['action'])
-
+    for instance, action in instance_actions:
         if action is None:
             continue
 
         elif action == "start":
-            print("    START instance %s" % i_id)
+            print("    START instance %s" % instance.id())
             instance.start()
             executed += 1
 
         elif action == "stop":
-            print("    STOP instance %s" % i_id)
+            print("    STOP instance %s" % instance.id())
             instance.stop()
             executed += 1
 
