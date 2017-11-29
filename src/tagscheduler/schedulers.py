@@ -64,6 +64,12 @@ class Scheduler(object):
         """ Checks what a scheduler would do on the instance given the tag """
         raise NotImplementedError()
 
+    def now_utc(self):
+        """ Current or mock time in UTC """
+        if self._mock_now_time is not None:
+            return self._mock_now_time
+        return datetime.now().utcnow()
+
     @staticmethod
     def parse_timezone(timezone):
         """ Parses a string Time Zone """
@@ -132,10 +138,7 @@ class TimerScheduler(Scheduler):
         if tag_value is None or tag_value.strip() == "":
             return "error"
 
-        now_time = datetime.now()
-        if self._mock_now_time is not None:
-            now_time = self._mock_now_time
-
+        now_time = self.now_utc().time()
         tag_split = tag_value.split("/")
 
         # Check fields
@@ -229,9 +232,7 @@ class DailyScheduler(Scheduler):
             return "error"
 
         # Some useful info
-        now_time = datetime.now().time()
-        if self._mock_now_time is not None:
-            now_time = self._mock_now_time
+        now_time = self.now_utc().time()
         now_weekday = datetime.today().strftime("%a").lower()
 
         # Extract the parameters

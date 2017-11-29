@@ -33,6 +33,10 @@ from schedulers import *
 from schedulable import *
 
 
+# Prefix of all tags that are schedulers
+SCHEDULER_PREFIX="scheduler"
+
+
 def lambda_handler(event, context):
     """ AWS Lambda Function entry point """
     run_on_regions = filter(None, os.environ.get('RUN_ON_REGIONS', "").split(','))
@@ -84,6 +88,8 @@ def process_instance(instance):
     """
     Process the tags of a single instance and decides what to do with it
     """
+    print("    Instance \"%s\" state is \"%s\"" % (instance.id(), instance.status()))
+
     actions = {
         instance.id(): {
             'instance_ref': instance,
@@ -91,32 +97,19 @@ def process_instance(instance):
         }
     }
 
-    print("    Instance \"%s\" state is \"%s\"" % (instance.id(), instance.status()))
-
-    for t in instance.tags():
-        t_key, t_value = (t['Key'], t['Value'])
-        if not t_key.startswith("scheduler-"):
-            continue
-        print("      Found scheduler tag with value: \"%s\":" % t_value)
-
-        # Look for the type of scheduler
-        scheduler_type = t_key[len("scheduler-"):]
-
-        # Check what the scheduler would do
-        scheduler = Scheduler.build(scheduler_type, instance)
-        if scheduler is None:
-            print("      Scheduler type is: unknown.")
+    # Execute the schedulers
+    for s in build_instance_schedulers(instance):
+        print("      - Found scheduler tag with value: \"%s\":" % s['value'])
+        print("        Scheduler type is: %s" % s['type'])
+        if s['type'] == 'unknown':
             continue
 
-        print("      Scheduler type is: %s" % scheduler_type)
-
-        tag_action = scheduler.check(t_value)
+        # Find what the scheduler would do on the instance
+        tag_action = s['scheduler'].check(s['value'])
         if tag_action is None:
-            print("      Tag action is: unknown.")
-            continue
-
-        print("      Tag action is: %s" % tag_action)
-        print("      Scheduler action is: ", end='')
+            tag_action = "nothing"
+        print("        Tag action is: %s" % tag_action)
+        print("        Scheduler action is: ", end='')
 
         # Actions "start"
         if tag_action == "start" and instance.status() == "stopped":
@@ -150,6 +143,46 @@ def process_instance(instance):
             print("nothing required.")
 
     return actions
+
+
+def build_instance_schedulers(instance):
+    """
+    Build the list of schedulers
+    """
+    schedulers = []
+
+    print("      Building and sorting list of schedulers.")
+    for t_key, t_value in [(t['Key'], t['Value']) for t in instance.tags()]:
+
+        # Extract the information in the Key
+        t_key_split = t_key.split("-")
+        if len(t_key_split) < 2:
+            continue
+
+        # Check it's a scheduler
+        scheduler_tag = t_key_split[0]
+        if scheduler_tag != SCHEDULER_PREFIX:
+            continue
+
+        # Get the scheduler type
+        scheduler_type = t_key_split[1]
+        scheduler = Scheduler.build(scheduler_type, instance)
+        if scheduler == None:
+            scheduler_type = "unknown"
+
+        # Get the scheduler name, if any
+        scheduler_name = t_key_split[2] if len(t_key_split) > 2 else ""
+
+        # Add the scheduler
+        schedulers.append({
+            'type': scheduler_type,
+            'name': scheduler_name,
+            'value': t_value,
+            'scheduler': scheduler
+        })
+
+    # Sort the schedulers by their name
+    return sorted(schedulers, key=lambda s: s['name'])
 
 
 def execute_actions(instance_actions):
