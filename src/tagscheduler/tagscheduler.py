@@ -96,13 +96,17 @@ def process_instance(instance):
 
         # Find what the scheduler would do on the instance
         tag_action = s.check()
-        if tag_action is None:
-            tag_action = "nothing"
+
         print("        Tag action is: %s" % tag_action)
         print("        Scheduler action is: ", end='')
 
+        # Nothing required
+        if tag_action is None:
+            action = None
+            print("nothing.")
+
         # Actions "start"
-        if tag_action == "start" and instance.status() == "stopped":
+        elif tag_action == "start" and instance.status() == "stopped":
             action = "start"
             print("start.")
 
@@ -125,6 +129,8 @@ def process_instance(instance):
         # Errors
         else:
             print("nothing required.")
+
+    print("      Final instance action is \"%s\"" % action)
     return action
 
 
