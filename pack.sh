@@ -1,6 +1,21 @@
 #!/bin/bash
+#
 # Packs the code of the lambda function into what Terraform expects
+#
+
 pushd src > /dev/null 2>&1
+
+#
+# Testing (it assumes all dependencies are satisfied at OS level)
+#
+echo -e "\nRunning Python tests"
+find -type f -iname '*.pyc' -delete
+python -m unittest discover
+if [[ $? > 0 ]] ; then
+    echo "Tests failed."
+    rm -rf pytz*
+    exit 1
+fi
 
 #
 # Getting PyTZ
@@ -9,17 +24,6 @@ pushd tagscheduler > /dev/null 2>&1
 rm -rf pytz*
 pip install -t . pytz
 popd > /dev/null 2>&1
-
-#
-# Testing
-#
-echo -e "\nRunning Python tests"
-python -m unittest discover
-if [[ $? > 0 ]] ; then
-    echo "Tests failed."
-    rm -rf pytz*
-    exit 1
-fi
 
 #
 # Cleanups

@@ -142,7 +142,7 @@ class TimerScheduler(Scheduler):
     """
     Find the appropriate action for the scheduler type "timer".
 
-    The format of the tag is: "<action>/<time_span>"
+    The format of the tag value is: "<action>/<time_span>"
      - "action" is "start" to start the instance or "stop" to stop the instance
         after time_span minutes have passed
      - "time_span" is a time duration in minutes, like 60 to indicate an hour
@@ -168,6 +168,9 @@ class TimerScheduler(Scheduler):
         # Interpreting tag
         try:
             self.action = fields[0].lower()
+            if self.action not in ["start", "stop"]:
+                self._error = True
+                return
             minutes = int(fields[1] if fields[1] != "" else "0")
             self.timer = timedelta(minutes=minutes)
         except Exception as e:
@@ -194,8 +197,12 @@ class TimerScheduler(Scheduler):
         # Instance up/down time
         if self._instance.status() == 'running':
             instance_time = self._instance.start_time()
+            if self.action == "start":
+                self.action = None
         elif self._instance.status() == 'stopped':
             instance_time = self._instance.stop_time()
+            if self.action == "stop":
+                self.action = None
         else:
             return None
 
@@ -214,7 +221,7 @@ class DailyScheduler(Scheduler):
     """
     Find the appropriate action for the scheduler type "daily"
 
-    The format of the tag is: "<start_time>/<stop_time>[/<week_days>[/<timezone>]]"
+    The format of the tag value is: "<start_time>/<stop_time>[/<week_days>[/<timezone>]]"
      - "start_time" is the time at which the instance must start, in the format
         HHMM (24h format), like 0730. If omitted the instance will not be started
         but it will keep the instance as it is.
@@ -242,7 +249,7 @@ class DailyScheduler(Scheduler):
         fields = self.value.split("/")
 
         # Check fields
-        if len(fields) < 3 or len(fields) > 4:
+        if len(fields) < 2 or len(fields) > 4:
             print("Wrong number of fields", file=sys.stderr)
             self._error = True
             return
@@ -326,10 +333,16 @@ class DailyScheduler(Scheduler):
 
 class IgnoreScheduler(Scheduler):
     """
-    This scheduler always returns "ignore"
+    This scheduler always returns "ignore", useful for debugging or safety.
+
+    The format of the tag value is: "ignore"
     """
     def __init__(self, instance, name, value):
         super(self.__class__, self).__init__(instance, name, value)
+
+        self._error = False
+        if self.value != "ignore":
+            self._error = True
 
     def __str__(self):
         return "IgnoreScheduler: ignore all scheduler tags"
@@ -339,12 +352,19 @@ class IgnoreScheduler(Scheduler):
         return "ignore_all"
 
     def check(self):
+        if self._error:
+            return "error"
         return "ignore"
 
 
 class FixedScheduler(Scheduler):
     """
-    This scheduler keeps an instance always started or stopped
+    This scheduler keeps an instance always started or stopped, useful for
+    debugging or safety.
+
+    The format of the tag value is: "[start|stop]"
+     - "start" keeps the instance always started.
+     - "stop" keeps the instance always stopped.
     """
     def __init__(self, instance, name, value):
         super(self.__class__, self).__init__(instance, name, value)
