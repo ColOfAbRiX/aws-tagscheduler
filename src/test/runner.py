@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #
 # MIT License
 #
@@ -23,5 +22,28 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+from __future__ import print_function
+
+import sys
+import unittest
+
+import test_awsobjects
+import test_schedulers
+
+# Initialize the test suite
+loader = unittest.TestLoader()
+suite  = unittest.TestSuite()
+
+# Add tests to the test suite
+suite.addTests(loader.loadTestsFromModule(test_awsobjects))
+suite.addTests(loader.loadTestsFromModule(test_schedulers))
+
+# Initialize a runner, pass the suite and run it
+runner = unittest.TextTestRunner(verbosity=1)
+result = runner.run(suite)
+
+# Return if tests passed or not
+sys.exit(len(result.errors) > 0)
 
 # vim: ft=python:ts=4:sw=4

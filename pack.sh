@@ -9,13 +9,15 @@ pushd src > /dev/null 2>&1
 # Testing (it assumes all dependencies are satisfied at OS level)
 #
 echo -e "\nRunning Python tests"
+pushd test > /dev/null 2>&1
 find -type f -iname '*.pyc' -delete
-python -m unittest discover
+python runner.py
 if [[ $? > 0 ]] ; then
     echo "Tests failed."
     rm -rf pytz*
     exit 1
 fi
+popd > /dev/null 2>&1
 
 #
 # Getting PyTZ

@@ -233,7 +233,8 @@ class DailyScheduler(Scheduler):
        "weekdays" for days from Monday to Friday and "weekends" for just Saturday
        and Sunday.
      - "timezone" is the time zone in 3 letter format, like EST or GMT. If not
-       specified, the default is UTC
+       specified, the default is UTC. Instead of using the "/" as separator, use
+       "-", for instance use "Europe-London" instead of "Europe/London"
     """
     def __init__(self, instance, name, value):
         super(self.__class__, self).__init__(instance, name, value)
@@ -296,7 +297,7 @@ class DailyScheduler(Scheduler):
             return "error"
 
         # Check day of the week
-        now_weekday = datetime.today().strftime("%a").lower()
+        now_weekday = self.now_utc().strftime("%a").lower()
         if now_weekday not in self.days_active:
             return None
 

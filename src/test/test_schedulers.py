@@ -27,14 +27,13 @@ from __future__ import print_function
 
 import os
 import sys
-sys.path.append(os.path.join(os.getcwd(), "tagscheduler"))
-sys.stderr = open('/dev/null', 'w')
+sys.path.append(os.path.join(os.getcwd(), "../tagscheduler"))
+
 import unittest
 
 from datetime import datetime, time
-
-from tagscheduler.schedulers import *
-from tagscheduler.schedulable import *
+from schedulers import *
+from schedulable import *
 
 
 class MockSchedulable(Schedulable):
@@ -218,16 +217,16 @@ class DailySchedulerTest(unittest.TestCase):
 
     def test_check_outofday(self):
         scheduler = Scheduler.build(MockSchedulable(), self.type, "", "1122/2211/mon")
-        scheduler._mock_now_time = datetime(2018, 2, 1, 12, 34, 56)  # It's a Friday
+        scheduler._mock_now_time = datetime(2018, 2, 1, 12, 34, 56)  # It's a Thursday
         self.assertIsNone(scheduler.check())
 
     def test_check_singleday(self):
-        scheduler = Scheduler.build(MockSchedulable(), self.type, "", "1300/1500/fri")
+        scheduler = Scheduler.build(MockSchedulable(), self.type, "", "1300/1500/thu")
         scheduler._mock_now_time = datetime(2018, 2, 1, 14)
         self.assertEqual(scheduler.check(), "start")
 
     def test_check_listofdays(self):
-        scheduler = Scheduler.build(MockSchedulable(), self.type, "", "1300/1500/thu.fri.sat")
+        scheduler = Scheduler.build(MockSchedulable(), self.type, "", "1300/1500/wed.thu.fri")
         scheduler._mock_now_time = datetime(2018, 2, 1, 14)
         self.assertEqual(scheduler.check(), "start")
 
@@ -474,5 +473,8 @@ class FixedSchedulerTest(unittest.TestCase):
         result = Scheduler.build(self.mock, self.type, "", "stop").check()
         self.assertEqual(result, "stop")
 
+
+if __name__ == '__main__':
+    unittest.main()
 
 # vim: ft=python:ts=4:sw=4
