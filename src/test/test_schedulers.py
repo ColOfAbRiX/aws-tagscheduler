@@ -31,9 +31,10 @@ sys.path.append(os.path.join(os.getcwd(), "../tagscheduler"))
 
 import unittest
 
-from datetime import datetime, time
+import pytz as tz
 from schedulers import *
-from schedulable import *
+from schedulable import Schedulable
+from datetime import datetime, time
 
 
 class MockSchedulable(Schedulable):
@@ -65,12 +66,32 @@ class MockSchedulable(Schedulable):
         return True
 
 
+class MockScheduler(Scheduler):
+    def __init__(self):
+        super(self.__class__, self).__init__("", "", "")
+
+    def __str__(self):
+        return "MockScheduler"
+
+    def type():
+        return "mockscheduler"
+
+    def check(self):
+        return True
+
+
 class SchedulerTest(unittest.TestCase):
     """
     Tests for concrete methods of Scheduler
     """
 
-    """ parse_timezone """
+    """ now_utc() """
+
+    def test_now_utc_is_utc(self):
+        result = MockScheduler().now_utc()
+        self.assertEqual(result.tzinfo, tz.utc)
+
+    """ parse_timezone() """
 
     def test_parse_none_timezone(self):
         result = Scheduler.parse_timezone(None)
@@ -84,7 +105,7 @@ class SchedulerTest(unittest.TestCase):
         result = Scheduler.parse_timezone("Canada-Yukon")
         self.assertEqual(result, tz.timezone("Canada/Yukon"))
 
-    """ parse_time """
+    """ parse_time() """
 
     def test_parse_none_time(self):
         result = Scheduler.parse_time(None, None)
@@ -96,14 +117,18 @@ class SchedulerTest(unittest.TestCase):
 
     def test_parse_time(self):
         result = Scheduler.parse_time("1122", None)
-        self.assertEqual(result, time(11, 22))
+        self.assertEqual(result, time(11, 22, tzinfo=tz.utc))
+
+    def test_parse_time_is_utc(self):
+        result = Scheduler.parse_time("1122", None)
+        self.assertEqual(result.tzinfo, tz.utc)
 
     def test_parse_time_withtz(self):
         # UTC is 0 hour ahead of Yukon
         result = Scheduler.parse_time("1122", "Canada-Yukon")
-        self.assertEqual(result, time(20, 22))
+        self.assertEqual(result, time(20, 22, tzinfo=tz.utc))
 
-    """ parse_day """
+    """ parse_day() """
 
     def test_parse_none_day(self):
         result = Scheduler.parse_day(None)

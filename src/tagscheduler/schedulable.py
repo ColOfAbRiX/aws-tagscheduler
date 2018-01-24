@@ -27,7 +27,6 @@ from __future__ import print_function
 
 import re
 import pytz as tz
-
 from datetime import datetime
 from abc import ABCMeta, abstractmethod
 
@@ -37,6 +36,15 @@ class Schedulable(object):
     Any object that can be scheduled to start and stop
     """
     __metaclass__ = ABCMeta
+
+    def __init__(self, client, instance):
+        if client is None:
+            raise ValueError("Client cannot be None.")
+        if instance is None:
+            raise ValueError("Instance cannot be None.")
+
+        self._client = client
+        self._instance = instance
 
     @abstractmethod
     def id(self):
@@ -78,38 +86,40 @@ class EC2Schedulable(Schedulable):
     """
     Representation of an EC2 instance being schedulable
     """
-
     def __init__(self, client, instance):
-        self._ec2_client = client
-        self._ec2_instance = instance
+        super(self.__class__, self).__init__(client, instance)
 
     def id(self):
-        return self._ec2_instance.instance_id
+        return self._instance.instance_id
 
     def start_time(self):
         if self.status() == "running":
-            return self._ec2_instance.launch_time
+            return tz.timezone('UTC').localize(
+                self._instance.launch_time,
+                is_dst=None
+            )
         return None
 
     def stop_time(self):
         if self.status() == "stopped":
-            reason = self._ec2_instance.state_transition_reason
-            stopped_time = re.findall('.*\((.*)\)', reason)[0]
-            return datetime.strptime(stopped_time, '%Y-%m-%d %H:%M:%S %Z').to('UTC')
+            reason = self._instance.state_transition_reason
+            stop_time = re.findall('.*\((.*)\)', reason)[0]
+            stop_time = datetime.strptime(stop_time, '%Y-%m-%d %H:%M:%S %Z')
+            return tz.timezone('UTC').localize(stop_time, is_dst=None)
         return None
 
     def status(self):
-        return self._ec2_instance.state['Name'].lower()
+        return self._instance.state['Name'].lower()
 
     def tags(self):
-        return sorted(self._ec2_instance.tags, key=lambda x: x['Key'])
+        return sorted(self._instance.tags, key=lambda x: x['Key'])
 
     def start(self):
-        self._ec2_instance.start()
+        self._instance.start()
         return True
 
     def stop(self):
-        self._ec2_instance.stop()
+        self._instance.stop()
         return True
 
 
@@ -119,11 +129,10 @@ class RDSSchedulable(Schedulable):
     """
 
     def __init__(self, client, instance):
-        self._rds_instance = instance
-        self._rds_client = client
+        super(self.__class__, self).__init__(client, instance)
 
     def id(self):
-        return self._rds_instance['DbiResourceId']
+        return self._instance['DbiResourceId']
 
     def start_time(self):
         # Not applicable for RDS
@@ -134,7 +143,7 @@ class RDSSchedulable(Schedulable):
         return None
 
     def status(self):
-        status = self._rds_instance['DBInstanceStatus'].lower()
+        status = self._instance['DBInstanceStatus'].lower()
         if status == "available":
             return "running"
         elif status == "stopped":
@@ -142,20 +151,20 @@ class RDSSchedulable(Schedulable):
         return None
 
     def tags(self):
-        tags = self._rds_client.list_tags_for_resource(
-            ResourceName=self._rds_instance['DBInstanceArn']
+        tags = self._client.list_tags_for_resource(
+            ResourceName=self._instance['DBInstanceArn']
         )
         return sorted(tags['TagList'], key=lambda x: x['Key'])
 
     def start(self):
-        self._rds_client.start_db_instance(
-            DBInstanceIdentifier=self._rds_instance['DBInstanceIdentifier']
+        self._client.start_db_instance(
+            DBInstanceIdentifier=self._instance['DBInstanceIdentifier']
         )
         return True
 
     def stop(self):
-        self._rds_client.stop_db_instance(
-            DBInstanceIdentifier=self._rds_instance['DBInstanceIdentifier']
+        self._client.stop_db_instance(
+            DBInstanceIdentifier=self._instance['DBInstanceIdentifier']
         )
         return True
 

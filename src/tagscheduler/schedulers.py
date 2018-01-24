@@ -101,7 +101,7 @@ class Scheduler(object):
 
     @staticmethod
     def parse_time(str_time, timezone):
-        """ Parses a string time """
+        """ Parses a string time as UTC time """
         if str_time is None:
             return None
         str_time = str_time.strip()
@@ -117,7 +117,7 @@ class Scheduler(object):
             time = timezone.localize(time, is_dst=None).astimezone(tz.utc)
 
         # Only return time
-        return time.time()
+        return time.time().replace(tzinfo=tz.utc)
 
     @staticmethod
     def parse_day(days):
@@ -301,7 +301,7 @@ class DailyScheduler(Scheduler):
         if now_weekday not in self.days_active:
             return None
 
-        now_time = self.now_utc().time()
+        now_time = self.now_utc().time().replace(tzinfo=tz.utc)
 
         # No time range specified (weird...)
         if self.start_time is None and self.stop_time is None:
