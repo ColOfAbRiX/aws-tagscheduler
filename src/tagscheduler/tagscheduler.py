@@ -136,7 +136,7 @@ def process_instance(instance):
 
 def build_instance_schedulers(instance):
     """
-    Build the list of schedulers
+    Build the list of schedulers and sort them by name
     """
     schedulers = []
 

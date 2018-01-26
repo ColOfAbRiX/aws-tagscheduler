@@ -31,6 +31,7 @@ import unittest
 import test_awsobjects
 import test_schedulers
 import test_schedulable
+import test_tagscheduler
 
 # Initialize the test suite
 loader = unittest.TestLoader()
@@ -40,9 +41,10 @@ suite  = unittest.TestSuite()
 suite.addTests(loader.loadTestsFromModule(test_awsobjects))
 suite.addTests(loader.loadTestsFromModule(test_schedulers))
 suite.addTests(loader.loadTestsFromModule(test_schedulable))
+suite.addTests(loader.loadTestsFromModule(test_tagscheduler))
 
 # Initialize a runner, pass the suite and run it
-runner = unittest.TextTestRunner(verbosity=1)
+runner = unittest.TextTestRunner(verbosity=2)
 result = runner.run(suite)
 
 # Return if tests passed or not

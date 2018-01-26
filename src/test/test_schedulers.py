@@ -25,59 +25,17 @@
 
 from __future__ import print_function
 
-import os
-import sys
-sys.path.append(os.path.join(os.getcwd(), "../tagscheduler"))
+# Ugly hack to allow import from the code folder. Please forgive the heresy.
+from sys import path
+from os.path import dirname, join
+path.append(join(dirname(path[0]), "tagscheduler"))
 
 import unittest
 
 import pytz as tz
 from schedulers import *
-from schedulable import Schedulable
+from mocked_objects import *
 from datetime import datetime, time
-
-
-class MockSchedulable(Schedulable):
-    def __init__(self, start_time=None, stop_time=None, status="", tags=[]):
-        self._start_time = start_time
-        self._stop_time = stop_time
-        self._status = status
-        self._tags = tags
-
-    def id(self):
-        return "mock_schedulable"
-
-    def start_time(self):
-        return self._start_time
-
-    def stop_time(self):
-        return self._stop_time
-
-    def status(self):
-        return self._status
-
-    def tags(self):
-        return self._tags
-
-    def start(self):
-        return True
-
-    def stop(self):
-        return True
-
-
-class MockScheduler(Scheduler):
-    def __init__(self):
-        super(self.__class__, self).__init__("", "", "")
-
-    def __str__(self):
-        return "MockScheduler"
-
-    def type():
-        return "mockscheduler"
-
-    def check(self):
-        return True
 
 
 class SchedulerTest(unittest.TestCase):

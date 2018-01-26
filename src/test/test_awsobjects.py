@@ -25,41 +25,16 @@
 
 from __future__ import print_function
 
-import os
-import sys
-sys.path.append(os.path.join(os.getcwd(), "../tagscheduler"))
+# Ugly hack to allow import from the code folder. Please forgive the heresy.
+from sys import path
+from os.path import dirname, join
+path.append(join(dirname(path[0]), "tagscheduler"))
 
 import unittest
 from mock import patch, Mock, MagicMock
 
 from tagscheduler import *
-
-
-class MockBoto3Objects:
-    def describe_regions(self):
-        """
-        Mock of boto3.client('ec2').describe_regions()
-        """
-        return {
-            "Regions": [
-                {"RegionName": "ap-south-1"},
-                {"RegionName": "eu-west-3"},
-                {"RegionName": "eu-west-2"}
-        ]}
-
-    def describe_db_instances(self):
-        """
-        Mock of boto3.client('rds').describe_db_instances()
-        """
-        return {
-            "DBInstances": [{}, {}]
-        }
-
-    def all(self):
-        """
-        Mock of boto3.resource('ec2').instances.all()
-        """
-        return [None, None]
+from mocked_objects import *
 
 
 class SchedulerTest(unittest.TestCase):

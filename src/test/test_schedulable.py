@@ -25,69 +25,18 @@
 
 from __future__ import print_function
 
-import os
-import sys
-sys.path.append(os.path.join(os.getcwd(), "../tagscheduler"))
+# Ugly hack to allow import from the code folder. Please forgive the heresy.
+from sys import path
+from os.path import dirname, join
+path.append(join(dirname(path[0]), "tagscheduler"))
 
 import unittest
 from mock import patch, Mock, MagicMock
 
 import pytz as tz
 from tagscheduler import *
+from mocked_objects import *
 from datetime import datetime, time
-
-
-class MockEC2Instance:
-    """
-    Mock of boto3 EC2.Instance
-    """
-    def __init__(self, start_return=True, stop_return=True, instance_id="", launch_time="", state_transition_reason="", client=None, status="", tags={}):
-        self.start_return = start_return
-        self.stop_return = stop_return
-        self.instance_id = instance_id
-        self.launch_time = datetime.strptime(launch_time, '%Y-%m-%d %H:%M:%S') if launch_time != "" else ""
-        self.state_transition_reason = state_transition_reason
-        self.client = client
-        self.state = {'Name': status}
-        self.tags = [{'Key': key, 'Value': val} for key, val in tags.iteritems()]
-
-    def start(self):
-        return self.start_return
-
-    def stop(self):
-        return self.stop_return
-
-
-class MockRDSInstance:
-    """
-    Mock of boto3 RDS.Client RDS instance information
-    """
-    def __init__(self, start_return=True, stop_return=True, db_resource_id="", db_instance_status="", tags={}):
-        self.start_return = start_return
-        self.stop_return = stop_return
-        self.db_resource_id = db_resource_id
-        self.db_instance_status = db_instance_status
-        self.tags = {
-            'TagList': [{'Key': key, 'Value': val} for key, val in tags.iteritems()]
-        }
-
-    def __getitem__(self, key):
-        if key == 'DBInstanceArn':
-            return "random_string"
-        elif key == 'DBInstanceStatus':
-            return self.db_instance_status
-        elif key == 'DbiResourceId':
-            return self.db_resource_id
-        return None
-
-    def start_db_instance(self, DBInstanceIdentifier):
-        return self.start_return
-
-    def stop_db_instance(self, DBInstanceIdentifier):
-        return self.stop_return
-
-    def list_tags_for_resource(self, ResourceName):
-        return self.tags
 
 
 class EC2SchedulableTest(unittest.TestCase):
