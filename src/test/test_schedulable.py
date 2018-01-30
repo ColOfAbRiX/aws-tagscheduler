@@ -25,18 +25,13 @@
 
 from __future__ import print_function
 
-# Ugly hack to allow import from the code folder. Please forgive the heresy.
-from sys import path
-from os.path import dirname, join
-path.append(join(dirname(path[0]), "tagscheduler"))
-
 import unittest
-from mock import patch, Mock, MagicMock
+from mock import patch
 
 import pytz as tz
-from tagscheduler import *
 from mocked_objects import *
 from datetime import datetime, time
+from tagscheduler.schedulable import *
 
 
 class EC2SchedulableTest(unittest.TestCase):
@@ -226,8 +221,5 @@ class RDSSchedulableTest(unittest.TestCase):
         result = RDSSchedulable(mock_rds, mock_rds).start()
         self.assertEquals(result, True)
 
-
-if __name__ == '__main__':
-    unittest.main()
 
 # vim: ft=python:ts=4:sw=4

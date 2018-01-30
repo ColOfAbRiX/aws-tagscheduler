@@ -25,22 +25,17 @@
 
 from __future__ import print_function
 
-# Ugly hack to allow import from the code folder. Please forgive the heresy.
-from sys import path
-from os.path import dirname, join
-path.append(join(dirname(path[0]), "tagscheduler"))
-
 import unittest
-from mock import patch, Mock, MagicMock
+from mock import patch
 
-from tagscheduler import *
 from mocked_objects import *
+from tagscheduler.tagscheduler import *
 
 
 class ProcessInstanceTest(unittest.TestCase):
 
     def setUp(self):
-        self.bis_mock_patch = patch('tagscheduler.build_instance_schedulers')
+        self.bis_mock_patch = patch('tagscheduler.tagscheduler.build_instance_schedulers')
         self.bis_mock = self.bis_mock_patch.start()
 
     def tearDown(self):
@@ -280,8 +275,5 @@ class ExecuteActionsTest(unittest.TestCase):
         self.assertEquals(self.schedulable_start.call_count, 2)
         self.assertEquals(self.schedulable_stop.call_count, 2)
 
-
-if __name__ == '__main__':
-    unittest.main()
 
 # vim: ft=python:ts=4:sw=4

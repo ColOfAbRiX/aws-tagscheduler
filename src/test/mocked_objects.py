@@ -25,13 +25,9 @@
 
 from __future__ import print_function
 
-# Ugly hack to allow import from the code folder. Please forgive the heresy.
-from sys import path
-from os.path import dirname, join
-path.append(join(dirname(path[0]), "tagscheduler"))
-
-from tagscheduler import *
+import tagscheduler
 from datetime import datetime, time
+from tagscheduler.schedulers import Scheduler
 
 
 class MockSchedulable:

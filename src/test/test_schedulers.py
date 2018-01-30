@@ -25,17 +25,12 @@
 
 from __future__ import print_function
 
-# Ugly hack to allow import from the code folder. Please forgive the heresy.
-from sys import path
-from os.path import dirname, join
-path.append(join(dirname(path[0]), "tagscheduler"))
-
 import unittest
 
 import pytz as tz
-from schedulers import *
 from mocked_objects import *
 from datetime import datetime, time
+from tagscheduler.schedulers import *
 
 
 class SchedulerTest(unittest.TestCase):
@@ -456,8 +451,5 @@ class FixedSchedulerTest(unittest.TestCase):
         result = Scheduler.build(self.mock, self.type, "", "stop").check()
         self.assertEqual(result, "stop")
 
-
-if __name__ == '__main__':
-    unittest.main()
 
 # vim: ft=python:ts=4:sw=4
