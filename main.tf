@@ -32,7 +32,7 @@ resource "aws_lambda_function" "tag_scheduler" {
 resource "aws_cloudwatch_event_rule" "tag_scheduler" {
   name                = "${local.scheduler_name}"
   description         = "Rule to trigger ${local.scheduler_name} function on a schedule"
-  schedule_expression = "rate(5 minutes)"
+  schedule_expression = "rate(${var.scheduler_interval})"
   depends_on          = ["aws_lambda_function.tag_scheduler"]
 }
 

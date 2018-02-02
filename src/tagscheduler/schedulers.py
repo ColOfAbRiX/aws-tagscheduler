@@ -140,7 +140,7 @@ class Scheduler(object):
 
 class TimerScheduler(Scheduler):
     """
-    Find the appropriate action for the scheduler type "timer".
+    Starts or stop an instance after a predetermined amount of time.
 
     The format of the tag value is: "<action>/<time_span>"
      - "action" is "start" to start the instance or "stop" to stop the instance
@@ -219,7 +219,8 @@ class TimerScheduler(Scheduler):
 
 class DailyScheduler(Scheduler):
     """
-    Find the appropriate action for the scheduler type "daily"
+    Starts or stop an instance based on the specified time each one of the
+    specified week days. It also supports time zones.
 
     The format of the tag value is: "<start_time>/<stop_time>[/<week_days>[/<timezone>]]"
      - "start_time" is the time at which the instance must start, in the format
@@ -232,9 +233,10 @@ class DailyScheduler(Scheduler):
        like "mon.wed.sat". Also valid are "all" for all the days of the week,
        "weekdays" for days from Monday to Friday and "weekends" for just Saturday
        and Sunday.
-     - "timezone" is the time zone in 3 letter format, like EST or GMT. If not
-       specified, the default is UTC. Instead of using the "/" as separator, use
-       "-", for instance use "Europe-London" instead of "Europe/London"
+     - "timezone" is the time zone in TZ Database format, like EST or Canada-Yukon
+       (note that "-" must be used as separator instead of "/"). If not specified,
+       the default is UTC.
+
     """
     def __init__(self, instance, name, value):
         super(self.__class__, self).__init__(instance, name, value)
@@ -334,7 +336,8 @@ class DailyScheduler(Scheduler):
 
 class IgnoreScheduler(Scheduler):
     """
-    This scheduler always returns "ignore", useful for debugging or safety.
+    This scheduler is meant to do no work on the instances, useful for debugging,
+    maintenance or safety.
 
     The format of the tag value is: "ignore"
     """
@@ -360,8 +363,7 @@ class IgnoreScheduler(Scheduler):
 
 class FixedScheduler(Scheduler):
     """
-    This scheduler keeps an instance always started or stopped, useful for
-    debugging or safety.
+    Keeps an instance always started or stopped, useful for debugging or safety.
 
     The format of the tag value is: "[start|stop]"
      - "start" keeps the instance always started.
