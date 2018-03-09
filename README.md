@@ -47,11 +47,11 @@ The interval of execution of the scheduler. The default is every 5 minutes
 
 ## Basics
 
-Schedulers are assigned to instances creating tags with specific names and values.
+Schedulers are assigned to instances creating tags with a specific name and value.
 
 An instance can have multiple independent schedulers.
 
-On regular intervals _Tag Scheduler_ will scan all available instances, it will execute all the schedulers assigned to each instance and determine the final action to take for that specific instance.
+At regular intervals, _Tag Scheduler_ will scan all available instances, it will execute all the schedulers assigned to each instance and determine the final action to take for that specific instance.
 
 When executed, each scheduler can have 3 possible actions:
 
@@ -63,11 +63,11 @@ When multiple schedulers are present they are sorted alphabetically based on the
 
 ## Tags
 
-_Tag Scheduler_ will scan the instances looking for tag names that respect the format: `scheduler-<scheduler_type>[-<name>]`. It will then execute the associated `<scheduler_type>` (scheduler types are described below).
+_Tag Scheduler_ will scan each instance looking for tag names that respect the format `scheduler-<scheduler_type>[-<name>]` and it will then execute the associated `<scheduler_type>` (scheduler types are described below).
 
 The field `<name>` is optional and it's used to sort the schedulers: the schedulers are first sorted alphabetically, based on their `<name>` and then executed.
 
-For instance, given 3 schedulers named `scheduler-daily-a`, `scheduler-timer-00` `scheduler-daily` they will be executed in the following order:
+As an example, given 3 schedulers named `scheduler-daily-a`, `scheduler-timer-00` `scheduler-daily` they will be executed in the following order:
 
 - `scheduler-daily`, which action is **start**;
 - `scheduler-timer-00` which action is **nothing**;
